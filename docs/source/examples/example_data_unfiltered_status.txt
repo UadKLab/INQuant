@@ -1,0 +1,55 @@
+Status for script run for experiment: example_data_unfiltered
+
+Script purpose:
+Example runthrough of INQuant with auto generated example data
+
+Script started at: 2025-04-29 16:13:38
+
+Time spent on entire script: 1.62 seconds
+- Time elapsed for time-flags called underway in the script:
+-- Finished running mzml file no. 1: 1.081 second(s)
+-- Finished running mzml file no. 2: 1.309 second(s)
+-- Finished running mzml file no. 3: 1.537 second(s)
+-- Normalization by median: 1.598 second(s)
+-- Loading proteome file: 1.599 second(s)
+-- Running protein alignment: 1.604 second(s)
+-- Finished protein alignment: 1.612 second(s)
+-- Creating protein table: 1.612 second(s)
+-- Processed proteins, starting grouping: 1.613 second(s)
+-- Found master proteins: 1.613 second(s)
+-- Grouped proteins: 1.614 second(s)
+
+Mass charge tolerance: 50 ppm
+Confidence filter: None
+Intensity tolerance: 20.0%
+Retention time window tolerance: 1.0%
+Empty values in output files: 
+Ran MBR: True
+MBR tolerance: 90.0%
+Normalization by median
+Protein quantification method: mean
+Number of peptides per protein (N) for quantification: 5
+
+Files loaded in this script (excluding mzML):
+-- Predictions file: predictions.csv
+---- Line count: 2892
+-- Proteome file: example_proteome.fasta
+---- Line count: 614
+
+mzML files loaded in running of this script:
+ID: 1, filename: file_1
+ID: 2, filename: file_2
+ID: 3, filename: file_3
+
+Noise calculations in this script based on MS2 lowest 5.0% intensities:
+ID: 1, noise: 3098.363525390625
+ID: 2, noise: 3100.0302734375
+ID: 3, noise: 3094.64013671875
+
+In this script, the following data files were created:
+-- Protein table: example_data_unfiltered_protein_table.csv
+---- Line count: 52
+-- Peptide table: example_data_unfiltered_peptide_table.csv
+---- Line count: 126
+-- PSM table: example_data_unfiltered_psm_table.csv
+---- Line count: 178

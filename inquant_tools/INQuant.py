@@ -5,7 +5,8 @@ import time
 from Bio import SeqIO
 import re
 from tqdm.auto import tqdm
-from . import Break, aa_mass, proton_da
+# From the module import functions, classes and variables
+from . import *
  
 class INQuant():
 
@@ -92,6 +93,8 @@ class INQuant():
             Index for the peptide-spectrum match dictionary.
         empty_values : str
             How empty fields in all output files will be filled.
+        unimod_dict : dict
+            Dictionary containing UniMod information to limit multiple lookup.
         status_file_creation : list
             List of status file creation information.
         status_noise : list
@@ -114,17 +117,24 @@ class INQuant():
 
         """
 
-        # Init
+        # Initializing attributes for status file
         self.start = time.perf_counter()
         self.exception_called = False
         self.break_message = None
         self.start = [time.perf_counter(), time.localtime()]
+        self.status_file_creation = []
+        self.status_noise = []
+        self.timer_counts = []
+        self.files_opened = set()
+        self.script_purpose = script_purpose
+        self.variable_status = []
         
-        if not predictions_file: # Needs it to initialize the rest for clean exit, but will call Break exception later
+        if not predictions_file: # Needed for initializing the rest for clean exit, but will call Break exception later if no predictions file
             predictions_file = ''
 
         self.predictions_file = predictions_file
         
+        # Initializing names and paths for output
         if experiment_name == '':
             self.experiment_name = self.predictions_file.split('/')[-1].split('.')[0]
         else:
@@ -154,14 +164,7 @@ class INQuant():
         self.psm_dict = {}
         self.psm_dict_index = 0
         self.empty_values = empty_values
-
-        # For status file
-        self.status_file_creation = []
-        self.status_noise = []
-        self.timer_counts = []
-        self.files_opened = set()
-        self.script_purpose = script_purpose
-        self.variable_status = []
+        self.unimod_dict = {}
 
         # Protein table
         self.proteome_file = proteome_file
@@ -215,6 +218,7 @@ class INQuant():
             This method does not return any value. It writes details to the status file.
         """
         
+        # Checks reason for exit
         if exc_type is Break or self.exception_called:
             if exc_value:
                 print(exc_value)
@@ -222,7 +226,8 @@ class INQuant():
                     self.break_message = exc_value 
             self.exception_called = True
         
-        if exc_type is None: # Only write the status file once at the end of the experiment
+        # If no exception was raised, write the status file
+        if exc_type is None: 
             self.stop = time.perf_counter()
             time_elapsed = self.stop - self.start[0]
             if time_elapsed > 180:
@@ -232,6 +237,7 @@ class INQuant():
         
             status = open(self.status_file,'w')
             
+            # Headers
             status.write(f"Status for script run for experiment: {self.experiment_name}\n\n")
             if self.script_purpose != '':
                 status.write(f"Script purpose:\n{self.script_purpose}\n\n")
@@ -247,6 +253,7 @@ class INQuant():
                 for flag in self.timer_counts:
                     status.write(flag)
 
+            # Add all variables for calculations
             status.write(f"\nMass charge tolerance: {self.ppm_tolerance} ppm\n")
             status.write(f"Confidence filter: {self.confidence_filter*100}%\n") if self.confidence_filter != 0.0 else status.write(f"Confidence filter: None\n")
             status.write(f"Intensity tolerance: {self.intensity_tolerance*100}%\n")
@@ -257,6 +264,7 @@ class INQuant():
                 for elm in self.variable_status:
                     status.write(f"{elm}")
             
+            # All files opened or written in the script
             status.write('\nFiles loaded in this script (excluding mzML):\n')
 
             status.write(f"-- Predictions file: {self.predictions_file}\n")
@@ -275,6 +283,7 @@ class INQuant():
             else:
                 status.write('None were loaded.\n')
             
+            # Noise for each mzML file 
             if self.status_noise != []:
                 status.write(f"\nNoise calculations in this script based on {self.noise_variables}\n")
                 for elm in self.status_noise:
@@ -318,6 +327,7 @@ class INQuant():
             to the `timer_counts` list attribute.
         
         """
+
         time_stop = time.perf_counter()
         time_elapsed = time_stop - self.start[0]
         if time_elapsed > 180:
@@ -332,6 +342,7 @@ class INQuant():
             noise_ms_level = 2,
             mbr = False,
             mbr_tolerance = 0.9,
+            cleavage_length = 4,
             quant_method = 'mean', 
             top_n_peptides = 5, 
             normalize_abundance = 'median',
@@ -362,6 +373,9 @@ class INQuant():
         mbr_tolerance : float
             The minimum confidence for the MBR spectras. Only predictions with a higher confidence
             will have mbr matches. Default is 0.9.
+        cleavage_length : int, default=4
+            The length of the cleavage site used for alignment. This parameter is used to output the protein position, 
+            with cleavage length being the number of amino acids before and after the peptide sequence in the protein.
         quant_method : str, optional
             The quantification method to use. Default is 'mean'.
         top_n_peptides : int, optional
@@ -399,20 +413,22 @@ class INQuant():
             If the `top_n_peptides` parameter is less than 1, a `ValueError` will be raised.
         
         """
-
-        if top_n_peptides < 1:
+        
+        # If protein quantification is to be performed, break if no peptides can be used for quantification
+        if top_n_peptides < 1 and self.proteome_file != None:
             self.__exit__(Break,"ValueError: Top N peptides must be greater than 0. No files were written.",None)
         
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
         
-        if mbr:
-            predictions_dict = self.load_predictions(mbr=mbr, mbr_tolerance=mbr_tolerance)
-        else:
-            predictions_dict = self.load_predictions()
-
-        self.psm_dict = self.make_psm_table(predictions_dict=predictions_dict, noise_boundary=noise_boundary, noise_ms_level=noise_ms_level)
+        # Load predictions with MBR specifications
+        predictions_dict = self.load_predictions(mbr=mbr, mbr_tolerance=mbr_tolerance)
         
+        # Make the PSM table 
+        psm_dict = self.make_psm_table(predictions_dict=predictions_dict, noise_boundary=noise_boundary, noise_ms_level=noise_ms_level)
+        
+        # Write the individual quantification files if specified
         self.write_files(write_protein_table=False, 
                         write_peptide_table=False,
                         write_psm_table=False,
@@ -420,14 +436,17 @@ class INQuant():
                         individual_quant_file_name = individual_quant_file_name,
                         overwrite_all = overwrite_all)
         
-        self.make_peptide_table(self.psm_dict)
+        # Make the peptide table from the PSM table 
+        peptide_dict = self.make_peptide_table(psm_dict)
 
-        if len(self.mzml_file_list) > 1:
-            self.normalizer(self.peptide_dict, type = normalize_abundance)
+        # If there are multiple mzml files and normalization is specified, normalize the abundance values in the peptide table 
+        if len(self.mzml_file_list) > 1 and normalize_abundance.lower() != 'false':
+            self.normalizer(peptide_dict, type = normalize_abundance)
 
+        # Compute protein alignment, quantification and inference if a proteome file is provided
         if self.proteome_file != None:
             self.load_proteome(self.proteome_file)
-            self.compute_alignments()
+            self.compute_alignments(cleavage_length=cleavage_length)
             self.make_protein_table(top_n_peptides=top_n_peptides, quant_method=quant_method)
             self.write_files(write_protein_table = write_protein_table,
                             protein_file_name = protein_file_name,
@@ -440,10 +459,7 @@ class INQuant():
                             overwrite_all = overwrite_all)
             
         else:
-            # Write the DataFrames to CSV files with the specified column order
-            for sequence in self.peptide_dict:
-                self.peptide_dict[sequence]['sequence'] = sequence.split('_')[0]
-            
+            # If no proteome file is provided, write the peptide table and PSM table only
             self.write_files(write_protein_table = False,
                             write_peptide_table = write_peptide_table,
                             peptide_file_name = peptide_file_name,
@@ -485,25 +501,33 @@ class INQuant():
             will stop and the Break exception will be raised.
         
         """
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
 
+        # Ensure multiple mzML files before allowing MBR
         if len(self.mzml_file_list) <= 1:
             mbr = False
+            print('There was only one mzML file provided. MBR will not be run.')
         
-        def find_mbr(df = pd.DataFrame, mbr_tolerance = 0.9):
 
+        def find_mbr(df = pd.DataFrame, mbr_tolerance = 0.9):
+            
+            # Load identifiers for the different mzML files
             mzml_dict = self.mzml_file_dict
 
+            # Initialize columns for spectra data
             df['mz'] = np.nan
             df['rt'] = np.nan
             df['charge'] = np.nan
+            # Initialize dict for storing experiment lengths for relative RT adjustments
             exp_len = {}
 
             # Populate rt and mz from mzml files
             for _, mzml_id in tqdm(enumerate(mzml_dict.keys()), 
                                    total=len(mzml_dict.keys()), 
                                    desc='Loading mzML files for MBR'):
+                # For each mzML file, load the spectra data
                 mask = df['id'] == mzml_id
                 exp = MSExperiment()
                 MzMLFile().load(mzml_dict[mzml_id]['file path'], exp)
@@ -515,8 +539,10 @@ class INQuant():
                     }
                     for i in range(exp.getNrSpectra())
                 }
+                # Store the highest RT (experiment length)
                 exp_len[mzml_id] = spectra_dict[exp.getNrSpectra() - 1]['rt']
 
+                # Add the spectra data to the predictions file
                 for i in df[mask].index:
                     scan_number = df.at[i, 'scan_number']
                     df.at[i, 'rt'] = spectra_dict[scan_number]['rt']
@@ -530,7 +556,7 @@ class INQuant():
             all_ids = list(mzml_dict.keys())
             df['group'] = 0
             
-            # Group by 'preds' and mass within +- ppm_tolerance
+            # Group by 'preds' and mass within +- ppm_tolerance, assigning group numbers for easier iteration
             sequence_groups = df.groupby(by = ['preds'])
             group_number = 1
             for sequence, group in sequence_groups:
@@ -548,18 +574,23 @@ class INQuant():
 
                     prev_mass = row['mass']
                 
-                group_number += 1
+                group_number += 1 
 
             sequence_groups = df.groupby(by = ['group'])
             
+            # Iterate through groups and assign MBR spectras where missing values
             for _, (group_no, group) in tqdm(enumerate(sequence_groups), 
                                              total=len(sequence_groups), 
                                              desc='Retrieving MBR spectras'):
                 # Select best row per file (highest log_prob)
                 complete_df_rows.append(group)
+                # Sort based on log_probs to use the best row as the reference row
                 group.sort_values('log_probs', ascending=False, inplace = True)
+                # Drop duplicates if there are multiple identifications of the same peptide within tolerance in the group
+                # Best confidence will be kept
                 group.drop_duplicates(subset='id', inplace = True)
                 found_ids = group['id'].tolist()
+                # Find the mzML IDs with missing identifications
                 missing_ids = [f_id for f_id in all_ids if f_id not in found_ids]
 
                 if missing_ids:
@@ -567,7 +598,7 @@ class INQuant():
                     if not any(group['log_probs'] > np.log10(mbr_tolerance)):
                         continue
                     
-                    # Find previous sequence with complete data
+                    # Find previous sequence with complete data to use as reference 
                     try:
                         prior_group = fully_identified_sequences[-1]
                     except IndexError:
@@ -602,13 +633,14 @@ class INQuant():
                             complete_df_rows.append(pd.DataFrame([new_row]))
                         except IndexError:
                             continue
-                else:
+                else: # All mzML files have a identification for this peptide
                     fully_identified_sequences.append(group)
 
-            # Combine and return
+            # Combine and return all rows
             final_df = pd.concat(complete_df_rows, ignore_index=True)
             final_df = final_df.sort_values(by=['group']).reset_index(drop=True)
 
+            # Convert to dictionary with dataframes for each mzML file to be used in quantification
             final_dict = {
                 mzml_id: final_df[final_df['id'] == mzml_id].drop(columns=['id', 'group']).reset_index(drop=True)
                 for mzml_id in mzml_dict.keys()
@@ -618,6 +650,7 @@ class INQuant():
             
             return final_dict
         
+        # Finding the shortest possible identifiers for the mzML files and assign these as IDs
         def find_ids(list_of_strings):
             names = [str(string).split('/')[-1].split('.')[0] for string in list_of_strings]
             min_name = min([len(name) for name in names])
@@ -631,13 +664,14 @@ class INQuant():
                     unique_list_slice_start = i
                     break
 
-            for i in range(1, min_name):
+            for i in range(1, min_name+1):
                 i *= -1
                 unique_char = set([string[i] for string in names])
                 if len(unique_char) != 1:
                     unique_list_slice_stop = i+1
                     break
-
+            
+            # Make a final list of the unique IDs
             unique_id = [string[unique_list_slice_start:len(string)+unique_list_slice_stop] for string in names]
             
             return unique_id
@@ -740,6 +774,7 @@ class INQuant():
             self.mzml_file_dict['mzml']['file path'] = self.mzml_file_list[0] # Adding file path to mzml file
             self.mzml_file_dict['mzml']['file name'] = self.mzml_file_list[0].split('/')[-1].split('.')[0] # Adding file name to mzml file
 
+        # Load the predictions into the dictionary, with or without MBR
         self.variable_status.append(f"Ran MBR: {mbr}\n")
         
         if mbr == True:
@@ -793,9 +828,11 @@ class INQuant():
             - Noise for each experiment can be found in the status file, if such a file is generated by using the with-statement for the class.
 
         """
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
         
+        # Function for noise calculation for each experiment
         def get_noise_for_whole_exp(specs = dict, noise_boundary = 0.05, noise_ms_level = 2):
 
             if noise_boundary == 0 or noise_boundary == None:
@@ -817,9 +854,11 @@ class INQuant():
         # For status file
         self.noise_variables = f"MS{noise_ms_level} lowest {noise_boundary*100}% intensities:"
         
+        # Function to calculate the quantification values for each mzML file
         def get_quants(spectra_dict = dict, mzml_id = str, noise = float):
 
             def area_calc(x_axis, y_axis):
+                # Calculate the area under the curve
                 dx = np.diff(x_axis)
                 y_min = np.minimum(y_axis[:-1], y_axis[1:])
                 y_diff = np.abs(np.diff(y_axis))
@@ -829,6 +868,7 @@ class INQuant():
                 return np.sum(square_area + triangle_area)
             
             def boundaries(intensities, times, rt_detection_scan):
+                # Assign boundaries for the quantification window using the initially specified intensity tolerance 
                 
                 if len(times) <= 1:
                     return
@@ -838,15 +878,19 @@ class INQuant():
                 
                 high_detect = None
 
+                # Assign preliminary boundaries based on the identification scan
                 for i in range(len(times)):
                     if times[i] > rt_detection_scan:
                         low_detect = i-1
                         high_detect = i
                         break
                 
+                # Ensure large enough window for quantification
                 if high_detect is None:
                     return
-
+                
+                # Boundaries are set when the intensity falls below the tolerance for two consecutive points
+                # The iteration works from the identification scan and outwards in both directions
                 id_intensities = intensities[low_detect]
                 
                 low_boundary = 0
@@ -879,20 +923,27 @@ class INQuant():
                 return low_boundary, high_boundary
 
             def iterate_spectras(sorted_predictions_dict = dict, noise = float):
-                
+                # Main quantification calculation is done here, iteration through each prediction
+
                 filtered_specs = {key: spec for key, spec in spectra_dict.items() if spec['ms_level'] == 1}
                 
                 for _,  prediction in tqdm(enumerate(sorted_predictions_dict.values()),total=len(sorted_predictions_dict),desc=f"Quantifying peptides for mzml file: {mzml_id}"):
-                
+                    
+                    # Assign the target mz and RT for the identification
                     target_mz = prediction['meas_mz']
                     rt_first_scan = prediction['rt']
                     
+                    # Check if identification is MBR or InstaNovo and assign initial tolerance
                     if prediction['scan_number'] == None:
+                        # MBR RT identifications are re-assigned based on the best peak in a 2pct window
                         tolerance_rt = ((1+self.rt_tolerance)*1.02)-1 * rt_first_scan  # Tolerance is large enough to find the best peak and 1 pct. around the best peak in a 2 pct. window
                     else:
                         tolerance_rt = self.rt_tolerance * rt_first_scan
+                    
+                    # Calculate the specific ppm tolerance
                     tolerance = (target_mz*self.ppm_tolerance)/10**6
                     
+                    # Filter the spectra data to only include points within respective tolerances
                     target_time, target_intensities = [], []
                     for index, spec in filtered_specs.items():
                         rt = spec['rt']
@@ -912,47 +963,55 @@ class INQuant():
                             target_intensities.append(intensity_sum)
                             target_time.append(rt)
 
+                    # Subtract the noise from the intensities
                     target_intensities = [elem - noise for elem in target_intensities]
                     target_intensities = [max(0, elem) for elem in target_intensities]
 
+                    # Convert to numpy arrays for faster calculations
                     target_time = np.array(target_time)
                     target_intensities = np.array(target_intensities)
                     
+                    # Only do further calculations if there are relevant points 
                     if target_time.size != 0:
-                    
-                        # Find the best window for the mbr specs (1pct rt around the max intensity)
+                        # Find the best window for the MBR specs (1pct RT around the max intensity)
                         if prediction['scan_number'] == None:
                             # Finding the max peak in the 2pct window
                             mask = np.abs(target_time - rt_first_scan) <= 2/100 * rt_first_scan
                             target_intensities_2 = target_intensities[mask]
-                            if len(target_intensities_2) != 0:
+                            if len(target_intensities_2) != 0: # Check if there are any points in the 2pct window
                                 target_peak = max(target_intensities_2)
                                 target_peak_index = np.where(target_intensities == target_peak)[0][0]
-                                # New rt detection scan, find 1pct window around it
+                                # New RT detection scan, find 1pct window around it
                                 rt_identify_peak = target_time[target_peak_index]
                                 final_mask = np.abs(target_time - rt_identify_peak) <= self.rt_tolerance * rt_identify_peak
                                 # Modify the target time and intensities to only include the 1pct window
                                 target_time = target_time[final_mask]
                                 target_intensities = target_intensities[final_mask]
                                 rt_first_scan = rt_identify_peak
-                            else: # The rt window is empty, so spec_quant will be NaN when trying to calculate it
+                            else: # The RT window is empty, so spec_quant will be NaN when trying to calculate it
                                 target_time = target_time[mask]
                                 target_intensities = target_intensities_2
                         
+                        # Calculate the boundaries and quantification value
                         try:
                             low, high = boundaries(target_intensities, target_time, rt_first_scan)
                             target_time = target_time[low:high + 1]
                             target_ints = target_intensities[low:high + 1]
                             spec_quant = area_calc(target_time, target_ints)
-                            
+                        
+                        # If no boundaries are found or there are no points within the boundaries, error is raised
                         except (TypeError, ValueError):
+                            # If the identification was done by MBR, the row will not be inclued
                             if prediction['scan_number'] == None:
                                 continue
+                            # Else, the quantification will be empty
                             spec_quant = np.nan
                     
                     else:
+                        # If no points are found, the quantification will be empty
                         spec_quant = np.nan
                     
+                    # Add the prediction to the PSM table
                     self.psm_dict[self.psm_dict_index] = {'sequence': f"{re.sub(r'[^A-Z]', '', prediction['preds'])}".replace('I','L'),
                                                           'seq_modifications': prediction['preds'],
                                                           'no_psms': prediction['no_psms'],
@@ -968,9 +1027,11 @@ class INQuant():
                                                           'calc_mass': aa_mass['H2O'] + proton_da # H2O, because the AA weights are for bound AA, not free
                                                           }
                     
+                    # Add the mass of the sequence to the PSM table
                     for aa in self.psm_dict[self.psm_dict_index]['sequence']:
                         self.psm_dict[self.psm_dict_index]['calc_mass'] += aa_mass[aa]
                     
+                    # Add modifications to the PSM table
                     if '(' in self.psm_dict[self.psm_dict_index]['seq_modifications']:
                         # Find all matches along with their starting index
                         mod = [f"{m.start()}({m.group(1)})" for m in re.finditer(r"\((.*?)\)", self.psm_dict[self.psm_dict_index]['seq_modifications'])]
@@ -986,32 +1047,54 @@ class INQuant():
                                     print(f"Error: Could not convert modification mass to float: {m}")
 
                         self.psm_dict[self.psm_dict_index]['modifications'] = ';'.join(mod)
+
+                    # Implementation for UNIMOD modifications
+                    if '[' in self.psm_dict[self.psm_dict_index]['seq_modifications']:
+                        # Find all matches along with their starting index
+                        mod = [f"{m.start()}[{m.group(1)}]" for m in re.finditer(r"\[(.*?)\]", self.psm_dict[self.psm_dict_index]['seq_modifications'])]
+                        
+                        for m in mod: 
+                            m = re.search(r"\[(.*?)\]", m).group(1)
+                            try:
+                                self.psm_dict[self.psm_dict_index]['calc_mass'] += self.unimod_dict[m]
+                            except KeyError:
+                                self.unimod_dict[m] = get_monoisotopic_mass(m)
+                                if self.unimod_dict[m] != None:
+                                    self.psm_dict[self.psm_dict_index]['calc_mass'] += self.unimod_dict[m]
+                                else:
+                                    raise TypeError
+                            except ValueError or TypeError:
+                                print(f"Error: Could not convert modification mass to float: {m}")
+
+                        self.psm_dict[self.psm_dict_index]['modifications'] = ';'.join(mod)
                     
+                    # Add a theoretical mz to the PSM table and calculate the error
                     self.psm_dict[self.psm_dict_index]['calc_mz'] = (self.psm_dict[self.psm_dict_index]['calc_mass']+proton_da*(self.psm_dict[self.psm_dict_index]['charge']-1))/self.psm_dict[self.psm_dict_index]['charge']
                     self.psm_dict[self.psm_dict_index]['mz_error'] = self.psm_dict[self.psm_dict_index]['mz'] - self.psm_dict[self.psm_dict_index]['calc_mz']
-                        
+                    
+                    # Add index, so that the PSM table is updated throughout multiple mzML files
                     self.psm_dict_index +=1
 
+            # Filter the data based on the current mzML file ID
             filtered_df = predictions_dict[mzml_id]
+            # Add necessary columns to dataframe for quantification
             if 'charge' not in filtered_df.columns:
-                filtered_df['charge'] = filtered_df['scan_number'].map(lambda x: spectra_dict.get(x, {}).get('charge'))
+                filtered_df['charge'] = filtered_df['scan_number'].map(lambda x: spectra_dict.get(x, {}).get('charge'))    
+        
+            try: # If MBR was run, the mz is already in the predictions file
+                filtered_df['meas_mz'] = filtered_df['mz']
+            except KeyError:
+                filtered_df['rt'] = filtered_df['scan_number'].map(lambda x: spectra_dict.get(x, {}).get('rt'))
+                filtered_df['meas_mz'] = filtered_df['scan_number'].map(lambda x: spectra_dict.get(x, {}).get('meas_mz'))    
+            filtered_df['meas_mass'] = filtered_df['charge']*filtered_df['meas_mz'] - (filtered_df['charge']-1)*proton_da
             
-            if 'calibrated_mass' in filtered_df.columns:
-                filtered_df['meas_mz'] = (filtered_df['calibrated_mass'] + proton_da*(filtered_df['charge']-1))/filtered_df['charge']
-                filtered_df.rename(columns={'calibrated_mass':'meas_mass'}, inplace=True)
-            else:
-                try:
-                    filtered_df['meas_mz'] = filtered_df['mz']
-                except KeyError:
-                    filtered_df['rt'] = filtered_df['scan_number'].map(lambda x: spectra_dict.get(x, {}).get('rt'))
-                    filtered_df['meas_mz'] = filtered_df['scan_number'].map(lambda x: spectra_dict.get(x, {}).get('meas_mz'))    
-                filtered_df['meas_mass'] = filtered_df['charge']*filtered_df['meas_mz'] - (filtered_df['charge']-1)*proton_da
-            
+            # Initialize number of PSMs to be cummulated later
             filtered_df['no_psms'] = [1 for _ in filtered_df['scan_number']]
-            filtered_dict = filtered_df.reset_index().to_dict(orient='index')
+            filtered_dict = filtered_df.reset_index().to_dict(orient='index') # Convert to dict for iteration
 
             iterate_spectras(filtered_dict, noise)
 
+        # Calculate the quantification values for each mzML file
         for _, mzml_id  in tqdm(enumerate(self.mzml_file_dict.keys()), total=len(self.mzml_file_dict), desc='Processing quants for each mzML file'):
             spectra_dict = {}
             exp = MSExperiment()
@@ -1032,6 +1115,7 @@ class INQuant():
             get_quants(spectra_dict, mzml_id, noise)
             self.time_flag(f"Finished running mzml file no. {mzml_id}")
         
+        # Return the final dict, which is also saved as a class attribute
         return self.psm_dict
 
     def make_peptide_table(self, psm_dict = dict()) -> dict:
@@ -1063,15 +1147,18 @@ class INQuant():
         - This function also updates the `self.peptide_dict` attribute of the class with the new data.
         
         """
+
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
            
-        
+        # Convert to Dataframe for filtering
         psm_df = pd.DataFrame.from_dict(psm_dict, orient='index')
         
         # Group by 'preds' and mass within +- ppm_tolerance
         psm_df['group'] = 0
         sequence_groups = psm_df.groupby(by = ['seq_modifications'])
+        # Initalize group number
         group_number = 1
         for sequence, group in sequence_groups:
             group.sort_values(by=['meas_mass'], ascending=True, inplace=True)
@@ -1080,6 +1167,7 @@ class INQuant():
                 if prev_mass == 0:
                     psm_df.at[i, 'group'] = group_number
                 else:
+                    # Check if the mass difference is within the tolerance
                     if abs(row['meas_mass'] - prev_mass) <= (self.ppm_tolerance/10**6)*prev_mass:
                         psm_df.at[i, 'group'] = group_number
                     else:
@@ -1090,9 +1178,11 @@ class INQuant():
             
             group_number += 1
 
-        # Combine identical PSMs
+        # Combine identical PSMs using the group numbers
         drop_indices = [] 
-        for _, (_, group) in tqdm(enumerate(psm_df.groupby('group')), total=len(psm_df['group'].unique()), desc='Combining identical PSMs'):
+        for _, (_, group) in tqdm(enumerate(psm_df.groupby('group')), 
+                                  total=len(psm_df['group'].unique()), 
+                                  desc='Combining identical PSMs'):
             for file_id in group['file_id'].unique():      
                 group_file = group[group['file_id'] == file_id]
                 best_conf = max(group_file['conf'])
@@ -1107,19 +1197,24 @@ class INQuant():
             
                 # Filter out rows where 'abundance' is NaN
                 abundance_val = [val for val in group_file['abundance'].tolist() if not np.isnan(val)]
-                    
+                
+                # Update DataFrame with combined rows
                 psm_df.at[group_line, 'no_psms'] = len(group_file.index)
                 psm_df.at[group_line, 'abundance'] = sum(abundance_val)/len(abundance_val) if abundance_val else np.nan
                 psm_df.at[group_line, 'conf'] = best_conf
                 psm_df.at[group_line, 'meas_mass'] = sum(group_file['meas_mass'])/len(group_file.index)
 
+        # Drop the rows that were combined
         psm_df.drop(index=drop_indices, inplace=True)
         
-        # Combine identical PSMs across experiments
-        for _, (_, group) in tqdm(enumerate(psm_df.groupby('sequence')), total=len(psm_df['seq_modifications'].unique()), desc='Combining identical PSMs across experiments'):
+        # Combine identical PSMs across experiments to peptides
+        for _, (_, group) in tqdm(enumerate(psm_df.groupby('sequence')), 
+                                  total=len(psm_df['seq_modifications'].unique()), 
+                                  desc='Differentiating PSMs with identical sequence but not identical overall'):
             if len(group['group'].unique()) == 1:
                 continue
-
+            
+            # Assigning groups and adding suffixes to the sequences to ensure error-free pivoting
             group_index = 0
             for group_number in group['group'].unique():
                 group_file = group[group['group'] == group_number]
@@ -1129,19 +1224,25 @@ class INQuant():
                 
                 group_index += 1
         
-        for _, (_, group) in tqdm(enumerate(psm_df.groupby('group')), total=len(psm_df['group'].unique()), desc='Combining identical PSMs across experiments'):   
+        for _, (_, group) in tqdm(enumerate(psm_df.groupby('group')), 
+                                  total=len(psm_df['group'].unique()), 
+                                  desc='Combining identical PSMs across experiments'):   
+            # Calculate the average mass, total PSMs, and best confidence for each peptide
             avg_meas_mass = group['meas_mass'].mean()
             total_psms = group['no_psms'].sum()
             best_conf = group['conf'].max()
-
+            
+            # Update the rows for each peptide based on the PSM values
             for i, row in group.iterrows():
                 psm_df.at[i, 'meas_mass'] = avg_meas_mass
                 psm_df.at[i, 'no_psms'] = total_psms
                 psm_df.at[i, 'conf'] = best_conf
-               
+            
+        # Pivot to wide format using sequence as index 
         wide_df = psm_df.pivot(index=['sequence', 'seq_modifications', 'meas_mass', 'conf', 'no_psms'], columns='file_id', values='abundance').reset_index()
         wide_df.columns = wide_df.columns.to_numpy().tolist()[:5] + [f'abundance_{name}' for name in wide_df.columns.to_numpy().tolist()[5:]]
         
+        # Convert to dict and update class attribute
         peptide_dict = wide_df.set_index('sequence').to_dict(orient='index')
         self.peptide_dict = peptide_dict
 
@@ -1179,19 +1280,25 @@ class INQuant():
         - This method also updates the `self.peptide_dict` attribute with the normalized values.
         
         """
+
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:   
             return
         
+        # Convert to DataFrame for easy full column normalization
         df = pd.DataFrame.from_dict(peptide_dict, orient='index')
         
+        # Ensure type is case independent
         type = type.lower()
 
+        # Add variable options to status file
         self.variable_status.append(f"Normalization by {'TIC (Total Ion Current)' if type == 'tic' else type}\n")
 
         self.time_flag(f"Normalization by {'TIC (Total Ion Current)' if type == 'tic' else type}")
         
         print('Normalizing abundances')
         
+        # Calculate the normalized values according to the specified method
         columns, counts = [], []
         for column in df:
             if 'abundance' in column: 
@@ -1221,6 +1328,7 @@ class INQuant():
                     col_sum = df[column].sum()
                     df[f"{column}_normalized"] = df[column]/col_sum
         
+        # Convert to dict and update class attribute
         normalized_dict = df.to_dict(orient='index')
         self.peptide_dict = normalized_dict
         
@@ -1261,26 +1369,33 @@ class INQuant():
         - If the proteome file contains multiple sequences, each will be parsed and stored in the dictionary.
 
         """
+
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
         
         self.time_flag('Loading proteome file')
 
+        # Use SeqIO to parse the FASTA file 
         proteome_dict_untouched = SeqIO.to_dict(SeqIO.parse(proteome_file, 'fasta'))
 
+        # Write the opening of the file to the status file
         with open(proteome_file, 'r') as f:
             prot_lines = sum(1 for _ in f)
         self.files_opened.add(f"-- Proteome file: {proteome_file}\n---- Line count: {prot_lines}\n")
 
+        # Initialize dictionaries to store protein sequences and descriptions
         self.proteome_dict = {}
         self.proteome_description_dict = {}
 
+        # Iterate through the parsed FASTA file and update the dictionaries
         for k, v in proteome_dict_untouched.items():
+            # Use nice format for fasta headers from UniProt (sp for SwissProt, tr for TrEMBL), otherwise use the whole header as key
             k = str(k).split('|')[1] if 'sp|' in k or 'tr|' in str(k) else str(k)
             self.proteome_dict[k] = str(v.seq).replace('I','L')
             self.proteome_description_dict[k] = str(v.description)
         
-    def compute_alignments(self, peptide_dict = None) -> dict:
+    def compute_alignments(self, peptide_dict = None, cleavage_length = 4) -> dict:
         """ Runs alignment on the peptide sequences against the supplied FASTA file proteome.
         Updates the peptide table with information about the number of proteins each peptide
         aligns to, the corresponding protein accessions, and the protein matches.
@@ -1293,6 +1408,10 @@ class INQuant():
             A dictionary representing the peptide table. If not provided, the function uses 
             the class attribute `self.peptide_dict`. Otherwise, it attempts to load the
             peptide table from the specified file path. 
+
+        cleavage_length : int, default=4
+            The length of the cleavage site used for alignment. This parameter is used to output the protein position, 
+            with cleavage length being the number of amino acids before and after the peptide sequence in the protein.
 
         Attributes
         ----------
@@ -1316,22 +1435,27 @@ class INQuant():
         - The FASTA format should contain the protein sequences in a valid format with '>' headers denoting protein IDs/descriptions followed by the sequence.
         
         """
+
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
         
         self.time_flag('Running protein alignment')
         
+        # Ensure that the proteome file is loaded for alignment
         if not self.proteome_dict:
-            print('Please load a proteome file before running this function')
+            self.__exit__(Break,'Please load a proteome file before running this function')
             return
 
+        # Ensure that peptide dict is either loaded in the class or passed as an argument
         if peptide_dict is None:
             if self.peptide_dict:
                 peptide_dict = self.peptide_dict
             else:
-                print('Please input or load a peptide table before running this function')
+                self.__exit__(Break,'Please input or load a peptide table before running this function')
                 return
 
+        # Allow for the peptide_dict to be a file path to a csv or xlsx file
         if type(peptide_dict) != dict:
             if type(peptide_dict) == str:
                 file_type = peptide_dict.split('.')[-1]
@@ -1340,7 +1464,7 @@ class INQuant():
                 elif file_type == 'xlsx':
                     peptide_df = pd.read_excel(peptide_dict)
             else:
-                print('Please input a dictionary, a csv or an excel file for the peptide table')
+                self.__exit__(Break,'Please input a dictionary, a csv or an excel file for the peptide table')
                 return
             
             try:
@@ -1358,12 +1482,15 @@ class INQuant():
 
                 peptide_dict = peptide_df.set_index('sequence').to_dict(orient='index')
 
+        # Update the class attribute with the peptide dictionary
         self.peptide_dict = peptide_dict
 
+        # Initialize the protein dictionary to store protein information
         self.protein_dict = {}
 
         total_peptides = len(self.peptide_dict)
 
+        # Iterate through the peptide dictionary and align each peptide to the proteome
         for _, (peptide_seq, peptide_data) in tqdm(enumerate(self.peptide_dict.items(), start=1), total=total_peptides, desc='Aligning peptides'):           
             proteins = []
             match_list = []
@@ -1372,6 +1499,7 @@ class INQuant():
 
             peptide_seq_stripped = peptide_seq.split('_')[0]
 
+            # Check all proteins in the proteome dictionary for matches to the peptide sequence
             for accession_id, protein_seq in self.proteome_dict.items():
                 protein_match = f"{accession_id} "
                 
@@ -1379,8 +1507,10 @@ class INQuant():
                 for match in re.finditer(peptide_seq_stripped, protein_seq):
                     start_pos = match.start()  # Zero-based index
                     end_pos = start_pos + len(peptide_seq_stripped) # Zero-based index
+                    # Add the match position to the protein match string
                     protein_match += f"[{start_pos + 1}:{end_pos}]"  # 1-based indexing
 
+                    # Check for teminal positions
                     if start_pos < 2:
                         terminal.append('N-terminal')
                     elif end_pos == len(protein_seq):
@@ -1388,24 +1518,25 @@ class INQuant():
                     else:
                         terminal.append('')
 
-                    cleavage_len = 4
                     pre_cleavage = ''
                     post_cleavage = ''
 
-                    if start_pos < cleavage_len:
+                    # Add the cleavage site information
+                    if start_pos < cleavage_length:
                         pre_cleavage = protein_seq[:start_pos]
-                        for i in range(0, cleavage_len-len(pre_cleavage)):
+                        for i in range(0, cleavage_length-len(pre_cleavage)):
                             pre_cleavage = '-' + pre_cleavage
                     else:
-                        pre_cleavage = protein_seq[start_pos - cleavage_len:start_pos]
+                        pre_cleavage = protein_seq[start_pos - cleavage_length:start_pos]
                     
-                    if end_pos > len(protein_seq) - cleavage_len:
+                    if end_pos > len(protein_seq) - cleavage_length:
                         post_cleavage = protein_seq[end_pos:]
-                        for i in range(0, cleavage_len-len(post_cleavage)):
+                        for i in range(0, cleavage_length-len(post_cleavage)):
                             post_cleavage += '-'
                     else:
-                        post_cleavage = protein_seq[end_pos:end_pos + cleavage_len]
+                        post_cleavage = protein_seq[end_pos:end_pos + cleavage_length]
 
+                    # Append the peptide environment with the cleavage information
                     cleavage.append(f"[{pre_cleavage}].{peptide_seq_stripped}.[{post_cleavage}]")                
                           
                     if accession_id in self.protein_dict:
@@ -1420,10 +1551,12 @@ class INQuant():
                             'protein_length': len(protein_seq)
                         }
 
+                # Only append if matches were found
                 if protein_match != f"{accession_id} ":
                     match_list.append(protein_match)
                     proteins.append(accession_id)
 
+            # Update the peptide dictionary with the protein matches information
             self.peptide_dict[peptide_seq].update({
                 'no_protein_matches': len(set(proteins)),
                 'protein_matches': ';'.join(proteins),
@@ -1433,6 +1566,7 @@ class INQuant():
                 'terminal': ';'.join(terminal)
             })
 
+            # Calculate the average abundance for each peptide
             sum_ab = 0
             count = 0
 
@@ -1448,12 +1582,14 @@ class INQuant():
             else: 
                 self.peptide_dict[peptide_seq]['avg_abundance'] = np.nan
 
+        # Update the protein dictionary with the peptide sequences and coverage information
         for prot in self.protein_dict.keys():
             self.protein_dict[prot]['peptide_seqs'] = ';'.join(sorted(self.protein_dict[prot]['peptide_seqs']))
             self.protein_dict[prot]['coverage'] = len(self.protein_dict[prot]['coverage'])
 
         self.time_flag('Finished protein alignment')
 
+        # Return the updated peptide and protein class attributes
         return self.peptide_dict, self.protein_dict
         
     def make_protein_table(self, 
@@ -1519,11 +1655,13 @@ class INQuant():
         - The protein groups are created based on peptide alignment, with quantification methods applied to summarize protein abundances.
         
         """
+
+        # Always check if exception was called, so class will gracefull exit if error was raised
         if self.exception_called:
             return
         
         if not self.proteome_dict:
-            print('Please load a proteome file before running this function')
+            self.__exit__(Break,'Please load a proteome file before running this function')
             return
 
         self.time_flag('Creating protein table')
@@ -1532,7 +1670,7 @@ class INQuant():
             if self.peptide_dict:
                 peptide_dict = self.peptide_dict
             else:
-                print('Please input or load a peptide table before running this function')
+                self.__exit__(Break,'Please input or load a peptide table before running this function')
                 return
         else:
             self.peptide_dict = peptide_dict
@@ -1541,11 +1679,12 @@ class INQuant():
             if self.protein_dict:
                 protein_dict = self.protein_dict
             else:
-                print('Please input or load a protein table before running this function')
+                self.__exit__(Break,'Please input or load a protein table before running this function')
                 return
         else:
             self.protein_dict = protein_dict
         
+        # Add variable options to status file
         self.variable_status.append(f"Protein quantification method: {quant_method}\n")
         self.variable_status.append(f"Number of peptides per protein (N) for quantification: {top_n_peptides}\n")
 
@@ -1555,8 +1694,10 @@ class INQuant():
             # Filter peptides that belong to the current protein
             peptide_list = [self.peptide_dict[seq] for seq in protein_data['peptide_seqs'].split(';')]
             
+            # Initialize empty list for the top N peptides
             top_n = []
 
+            # Find top_N most abundant peptides for the current protein
             for seq in peptide_list:
                 top_n.sort(reverse=True, key=lambda x: x['avg_abundance'])
                     
@@ -1565,11 +1706,13 @@ class INQuant():
                 elif seq['avg_abundance'] > top_n[-1]['avg_abundance']:
                     top_n[-1] = seq
 
+            # Update the protein dictionary with peptide information
             self.protein_dict[accession_id]['no_peptides'] = len(peptide_list)
             self.protein_dict[accession_id]['no_unique_peptides_protein'] = sum(1 for seq in peptide_list if seq['no_protein_matches'] == 1)
             self.protein_dict[accession_id]['no_psms'] =  sum(seq['no_psms'] for seq in peptide_list)
             self.protein_dict[accession_id]['coverage_pct'] = round(protein_data['coverage']*100/protein_data['protein_length'])
             
+            # Calculate the average abundance for the top N peptides for each protein by the specified method
             for col, abundance in peptide_list[0].items():
                 if 'abundance' in col and col != 'avg_abundance':
                     if col not in self.protein_dict[accession_id]:
@@ -1590,9 +1733,10 @@ class INQuant():
                             self.protein_dict[accession_id][col] = self.protein_dict[accession_id][col]/counter
         
         self.time_flag('Processed proteins, starting grouping')
- 
-        def create_principal_protein(prot = str):
 
+        # Function for creating the principal protein in the grouped table
+        def create_principal_protein(prot = str):
+            
             if prot not in self.grouped_protein_dict.keys():
                 self.grouped_protein_dict[prot] = {
                     'principal_protein': prot,
@@ -1610,8 +1754,15 @@ class INQuant():
                     if 'abundance' in col:
                         self.grouped_protein_dict[prot][col] = self.protein_dict[prot][col]
         
+        # Initialize the dict for protein inference table
         self.grouped_protein_dict = {}
-        for _, peptide_values in tqdm(enumerate(self.peptide_dict.values(), start=1), total=len(self.peptide_dict), desc='Finding principal proteins'):
+
+        # Iterate over peptides to find the principal protein for each peptide
+        for _, peptide_values in tqdm(enumerate(self.peptide_dict.values(), start=1), 
+                                      total=len(self.peptide_dict), 
+                                      desc='Finding principal proteins'):
+            
+            # Find all proteins that align to the peptide
             proteins = [elm.split(' ')[0] for elm in peptide_values['protein_locs'].split(';')]
             protein_match_dict = {elm.split(' ')[0]: elm for elm in peptide_values['protein_locs'].split(';')}
     
@@ -1678,7 +1829,10 @@ class INQuant():
         self.time_flag('Found principal proteins')
 
         # Now, all principal protein are created, assign peptides to the principal protein table  
-        for _, peptide_values in tqdm(enumerate(self.peptide_dict.values(), start=1), total=len(self.peptide_dict), desc='Grouping proteins'):
+        for _, peptide_values in tqdm(enumerate(self.peptide_dict.values(), start=1), 
+                                      total=len(self.peptide_dict), 
+                                      desc='Grouping proteins'):
+            
             # Dont look at peptides that dont match to a protein
             if peptide_values['protein_matches'].split(';')[0] == '':
                 continue
@@ -1730,6 +1884,7 @@ class INQuant():
         protein_group_list = [self.grouped_protein_dict[prot]['protein_group'] for prot in self.grouped_protein_dict.keys()]
         protein_group_list = [group for sublist in protein_group_list for group in sublist]
 
+        # Update the principal proteins with the information about its aligning peptides
         for prot in self.grouped_protein_dict.keys():
             self.grouped_protein_dict[prot]['no_peptides'] = len(self.grouped_protein_dict[prot]['peptide_seqs'])
             self.grouped_protein_dict[prot]['peptide_seqs'] = ';'.join(sorted(self.grouped_protein_dict[prot]['peptide_seqs']))
@@ -1738,9 +1893,11 @@ class INQuant():
 
         self.time_flag('Grouped proteins')
 
+        # All peptides in the group
         peptide_group_list = [self.grouped_protein_dict[prot]['peptide_seqs'].split(';') for prot in self.grouped_protein_dict.keys()]
         peptide_group_list = [group for sublist in peptide_group_list for group in sublist]
 
+        # Finding locations for the principal protein
         for sequence, values in self.peptide_dict.items():
             self.peptide_dict[sequence]['sequence'] = sequence.split('_')[0]
             self.peptide_dict[sequence]['no_protein_groups'] = sum([1 for peptide in peptide_group_list if peptide == sequence])
@@ -1752,7 +1909,8 @@ class INQuant():
                 self.peptide_dict[sequence]['principal_protein_end'] = ';'.join(end_list)
             except KeyError:
                 continue        
-
+        
+        # Update the grouped protein dictionary with the number of unique peptides in the group
         for values in self.grouped_protein_dict.values():
             values['no_unique_peptides_group'] = sum(1 for peptide in values['peptide_seqs'].split(';') if self.peptide_dict[peptide]['no_protein_groups'] == 1)
             values['peptide_seqs'] = ';'.join([peptide.split('_')[0] for peptide in values['peptide_seqs'].split(';')])
@@ -1772,6 +1930,7 @@ class INQuant():
                 try:
                     self.peptide_dict[sequence]
                 except KeyError:
+                    # Check for the sequence with the _0 suffix, which is used for duplicate sequences which are not identical
                     sequence += '_0'
                 
                 try:
@@ -1791,7 +1950,7 @@ class INQuant():
         except AttributeError:
             print('No PSM data found')
 
-        # Define the desired column order for each DataFrame (for the run function output files)
+        # Define the desired column order for each DataFrame (for the output files)
         self.psm_columns = ['sequence', 'seq_modifications', 'modifications', 'principal_protein', 'protein_matches', 'no_protein_matches', 'no_protein_groups', 'no_psms', 'conf', 'abundance', 'charge', 'mz', 'calc_mass', 'meas_mass', 'rt', 'id_scan', 'file_id', 'exp_file']
         
         self.peptide_columns = ['sequence', 'seq_environment', 'seq_modifications', 'terminal', 'principal_protein', 'principal_protein_start', 'principal_protein_end', 'protein_matches', 'protein_locs', 'no_protein_matches', 'no_protein_groups', 'no_psms', 'conf', 'meas_mass']
@@ -1799,6 +1958,7 @@ class INQuant():
         peptide_col_ab = []
         peptide_col_norm = []
 
+        # Append columns to the peptide table and sort them in the correct order
         for col in next(iter(self.peptide_dict.values())).keys():    
             if col in self.peptide_columns:
                 continue
@@ -1819,6 +1979,7 @@ class INQuant():
         self.protein_columns = ['principal_protein', 'description', 'coverage_pct', 'protein_length', 'protein_group', 'no_protein_groups', 'peptide_seqs', 'no_peptides', 'no_unique_peptides_protein', 'no_unique_peptides_group', 'no_psms'] 
         self.protein_columns += sorted(peptide_col_ab) + sorted(peptide_col_norm)
 
+        # Return the protein inference table class attribute
         return self.grouped_protein_dict
 
     def write_files(self,  
@@ -1891,8 +2052,8 @@ class INQuant():
         - If any file names are not specified, default names will be used.
         """
 
-        if self.exception_called:
-            return
+        # This function does not check for the graceful exit as it error handles in itself
+        # But if an exit is made and this function is called, any files which can be output will be
 
         def file_name_check(file = str(), file_name = str()):
             while True:
@@ -1944,6 +2105,10 @@ class INQuant():
                 print('No protein table found')
         
         if write_peptide_table:
+            # Remove underscores for sequence if these are present in the peptide table (created for easier grouping)
+            for sequence in self.peptide_dict:
+                self.peptide_dict[sequence]['sequence'] = sequence.split('_')[0]
+            
             if peptide_file_name == '':
                 peptide_file_name = f"{self.experiment_path}{self.experiment_name}_peptide_table.csv"
             else:

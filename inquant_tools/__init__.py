@@ -31,5 +31,44 @@ alkylation_mass = 57.02146 # Alkylation with Iodoacetamide og 2-Chloroacetamide,
 aa_mass['C'] += alkylation_mass
 proton_da = 1.007276466812 # the Da for a single proton
 neutron_da = 1.00866491578 # the Da for a single neutron
+
+def get_monoisotopic_mass(unimod_id):
+
+    if 'UNIMOD:' in unimod_id or '[' in unimod_id or ']' in unimod_id: 
+        unimod_id = re.findall(r'\d+', unimod_id)[0] # Extract the number from the string
+    
+    # Look up the monoisotopic mass in the unimod database
+    url = f"https://www.unimod.org/modifications_view.php?editid1={unimod_id}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Locate all labels with the "tableLabelStyle" class
+        labels = soup.find_all("td", class_="tableLabelStyle")
+        monoisotopic_mass = None
+
+        for label in labels:
+            if "Monoisotopic" in label.get_text(strip=True):
+                sibling = label.find_next_sibling("td")  # Get the next <td>
+                if sibling:  # Ensure it exists
+                    monoisotopic_mass = sibling.get_text(strip=True)
+                    break
         
-from inquant_tools import INQuant
+        if monoisotopic_mass:
+            try:
+                return float(monoisotopic_mass)
+            except ValueError:
+                print(f"Error: Unable to convert '{monoisotopic_mass}' to a number.")
+                return None
+        else:
+            print(f"Monoisotopic mass not found for Unimod ID {unimod_id}.")
+            return None
+    else:
+        print(f"Failed to fetch data for Unimod ID {unimod_id}. HTTP Status: {response.status_code}")
+        return None
+
+from .INQuant import INQuant
+from .Calibration import Calibration
+
