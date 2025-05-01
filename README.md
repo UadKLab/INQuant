@@ -3,6 +3,9 @@
 `INQuant` is a Python module designed for quantification for InstaNovo predictions. 
 Developed by Annekatrine Kirketerp-Møller and Ida Sofie Goldschmidt as part of a 5 ECTS special course and 20 ECTS Bachelors thesis at DTU.
 
+## Documentation
+[The documentation for the code, including the API documentation can be found here](https://uadklab.github.io/INQuant/)
+
 ## Installation
 
 Ensure you have the required dependencies installed:
@@ -30,5 +33,3 @@ with INQuant(predictions_file="predictions.csv",
             ) as INQ:          
     INQ.run()
 ```
-
-More info can be found in the documentation, which is coming soon...
