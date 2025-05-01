@@ -351,7 +351,7 @@ class Calibration:
         Parameters
         ----------
         file_path : str
-            The path where the calibrated predictions CSV file will be saved.
+            The path where the calibrated mzML files will be saved.
 
         mzml_name : str
             The ID of the mzML file to be saved.
