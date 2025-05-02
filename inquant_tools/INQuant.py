@@ -583,7 +583,7 @@ class INQuant():
                                              total=len(sequence_groups), 
                                              desc='Retrieving MBR spectras'):
                 # Select best row per file (highest log_prob)
-                complete_df_rows.append(group)
+                complete_df_rows.append(group.copy())
                 # Sort based on log_probs to use the best row as the reference row
                 group.sort_values('log_probs', ascending=False, inplace = True)
                 # Drop duplicates if there are multiple identifications of the same peptide within tolerance in the group
