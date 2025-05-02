@@ -20,10 +20,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install sphinx pydata-sphinx-theme
+          pip install -r requirements.txt
 
       - name: Build the documentation
         run: |
           cd docs
+          make clean
           make html
 
       - name: Deploy to GitHub Pages
@@ -32,3 +34,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docs/build/html
           enable_jekyll: false  # Automatically creates .nojekyll
+          force_orphan: true
