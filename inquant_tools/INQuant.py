@@ -630,11 +630,11 @@ class INQuant():
                             new_row['rt'] = prev_row['rt'] + avg_delta*exp_len[m_id]
                             new_row['log_probs'] = None
                             new_row['group'] = group['group'].iloc[0]
-                            complete_df_rows.append(pd.DataFrame([new_row]))
+                            complete_df_rows.append(pd.DataFrame([new_row]).copy())
                         except IndexError:
                             continue
                 else: # All mzML files have a identification for this peptide
-                    fully_identified_sequences.append(group)
+                    fully_identified_sequences.append(group.copy())
 
             # Combine and return all rows
             final_df = pd.concat(complete_df_rows, ignore_index=True)
@@ -936,7 +936,7 @@ class INQuant():
                     # Check if identification is MBR or InstaNovo and assign initial tolerance
                     if prediction['scan_number'] == None:
                         # MBR RT identifications are re-assigned based on the best peak in a 2pct window
-                        tolerance_rt = ((1+self.rt_tolerance)*1.02)-1 * rt_first_scan  # Tolerance is large enough to find the best peak and 1 pct. around the best peak in a 2 pct. window
+                        tolerance_rt = (((1+self.rt_tolerance)*1.02)-1) * rt_first_scan  # Tolerance is large enough to find the best peak and 1 pct. around the best peak in a 2 pct. window
                     else:
                         tolerance_rt = self.rt_tolerance * rt_first_scan
                     
@@ -945,34 +945,32 @@ class INQuant():
                     
                     # Filter the spectra data to only include points within respective tolerances
                     target_time, target_intensities = [], []
-                    for index, spec in filtered_specs.items():
+                    for spec in filtered_specs.values():
                         rt = spec['rt']
-                        if abs(rt - rt_first_scan) > tolerance_rt:
-                            continue  
+                        if abs(rt - rt_first_scan) <= tolerance_rt:
+                            mz_values = np.array(spec['peaks'][0])
+                            intensity_values = np.array(spec['peaks'][1])
+                            
+                            mz_mask = np.abs(mz_values - target_mz) < tolerance
+                            if len(intensity_values[mz_mask]) != 0:
+                                intensity_sum = np.sum(intensity_values[mz_mask])
+                            else:
+                                intensity_sum = None
 
-                        mz_values = np.array(spec['peaks'][0])
-                        Intensity_values = np.array(spec['peaks'][1])
-                        
-                        mz_mask = np.abs(mz_values - target_mz) < tolerance
-                        if len(Intensity_values[mz_mask]) != 0:
-                            intensity_sum = np.sum(Intensity_values[mz_mask])
-                        else:
-                            intensity_sum = None
-
-                        if intensity_sum != None:
-                            target_intensities.append(intensity_sum)
-                            target_time.append(rt)
+                            if intensity_sum != None:
+                                target_intensities.append(intensity_sum)
+                                target_time.append(rt)
 
                     # Subtract the noise from the intensities
                     target_intensities = [elem - noise for elem in target_intensities]
                     target_intensities = [max(0, elem) for elem in target_intensities]
-
-                    # Convert to numpy arrays for faster calculations
-                    target_time = np.array(target_time)
-                    target_intensities = np.array(target_intensities)
-                    
+                        
                     # Only do further calculations if there are relevant points 
-                    if target_time.size != 0:
+                    if len(target_time) != 0:
+                        # Convert to numpy arrays for faster calculations
+                        target_time = np.array(target_time)
+                        target_intensities = np.array(target_intensities)
+                    
                         # Find the best window for the MBR specs (1pct RT around the max intensity)
                         if prediction['scan_number'] == None:
                             # Finding the max peak in the 2pct window
@@ -1008,6 +1006,9 @@ class INQuant():
                             spec_quant = np.nan
                     
                     else:
+                        # If the identification was done by MBR, the row will not be inclued
+                        if prediction['scan_number'] == None:
+                            continue
                         # If no points are found, the quantification will be empty
                         spec_quant = np.nan
                     
@@ -1969,10 +1970,6 @@ class INQuant():
                     peptide_col_norm.append(col)
                 else:
                     peptide_col_ab.append(col)
-            else:
-                if col not in self.peptide_columns:
-                    print('Column not found in peptide table:')
-                    print(col)
 
         self.peptide_columns += sorted(peptide_col_ab) + sorted(peptide_col_norm)
 
