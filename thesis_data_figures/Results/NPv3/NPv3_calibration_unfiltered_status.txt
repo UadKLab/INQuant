@@ -1,0 +1,35 @@
+Status for script run for experiment: NPv3_calibration_unfiltered
+
+Script purpose:
+NPv3 calibration to get ppm tolerance
+
+Script started at: 2025-05-05 13:29:15
+
+Time spent on entire script: 29.67 seconds
+
+Mass charge tolerance: 50 ppm
+Confidence filter: None
+Intensity tolerance: 20.0%
+Retention time window tolerance: 1.0%
+Ran MBR: False
+- Maximum ppm tolerance for 0: 86.96030043706986
+- Maximum ppm tolerance for 5: 98.24065099391744
+- Maximum ppm tolerance for 10: 90.5543115330008
+- Maximum ppm tolerance for 20: 93.50677041220621
+- Maximum ppm tolerance for 40: 98.85741421781134
+- Maximum ppm tolerance for 40_rep2: 91.05588497726664
+- Maximum ppm tolerance for 40_rep3: 95.4940582986762
+- Maximum ppm tolerance across all experiments: 98.85741421781134
+
+Files loaded in this script (excluding mzML):
+-- Predictions file: Datafiles/NPv3/NPv3_instanovo.csv
+---- Line count: 190330
+
+mzML files loaded in running of this script:
+ID: 0, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_0
+ID: 5, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_5
+ID: 10, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_10
+ID: 20, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_20
+ID: 40, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_40
+ID: 40_rep2, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_40_rep2
+ID: 40_rep3, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_40_rep3

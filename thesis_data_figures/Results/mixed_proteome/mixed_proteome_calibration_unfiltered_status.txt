@@ -1,0 +1,33 @@
+Status for script run for experiment: mixed_proteome_calibration_unfiltered
+
+Script purpose:
+Mixed proteome calibration
+
+Script started at: 2025-05-04 12:28:34
+
+Time spent on entire script: 15.95 seconds
+
+Mass charge tolerance: 50 ppm
+Confidence filter: None
+Intensity tolerance: 20.0%
+Retention time window tolerance: 1.0%
+Ran MBR: False
+- Maximum ppm tolerance for A1: 92.36777596510724
+- Maximum ppm tolerance for A2: 80.20684384489526
+- Maximum ppm tolerance for A3: 75.13579106315673
+- Maximum ppm tolerance for B1: 97.63457296020923
+- Maximum ppm tolerance for B2: 79.98090521433431
+- Maximum ppm tolerance for B3: 78.73696775975333
+- Maximum ppm tolerance across all experiments: 97.63457296020923
+
+Files loaded in this script (excluding mzML):
+-- Predictions file: Datafiles/mixed_proteome/mixed.csv
+---- Line count: 108288
+
+mzML files loaded in running of this script:
+ID: A1, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_A1
+ID: A2, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_A2
+ID: A3, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_A3
+ID: B1, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_B1
+ID: B2, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_B2
+ID: B3, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_B3

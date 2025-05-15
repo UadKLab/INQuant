@@ -1,0 +1,65 @@
+Status for script run for experiment: GluC_MBR_unfiltered
+
+Script purpose:
+GluC quantification with MBR
+
+Script started at: 2025-05-04 14:34:07
+
+Time spent on entire script: 24.8 minutes
+- Time elapsed for time-flags called underway in the script:
+-- Finished running MBR: 126.4 second(s)
+-- Finished running mzml file no. Ctrl1: 173.0 second(s)
+-- Finished running mzml file no. Ctrl2: 3.64 minute(s)
+-- Finished running mzml file no. Ctrl3: 4.46 minute(s)
+-- Finished running mzml file no. GluC1: 5.26 minute(s)
+-- Finished running mzml file no. GluC2: 6.11 minute(s)
+-- Finished running mzml file no. GluC3: 6.89 minute(s)
+-- Normalization by median: 7.55 minute(s)
+-- Loading proteome file: 7.55 minute(s)
+-- Running protein alignment: 7.55 minute(s)
+-- Finished protein alignment: 24.5 minute(s)
+-- Creating protein table: 24.5 minute(s)
+-- Processed proteins, starting grouping: 24.5 minute(s)
+-- Found principal proteins: 24.5 minute(s)
+-- Grouped proteins: 24.5 minute(s)
+
+Mass charge tolerance: 49.25442393109819 ppm
+Confidence filter: None
+Intensity tolerance: 20.0%
+Retention time window tolerance: 1.0%
+Empty values in output files: 
+Ran MBR: True
+MBR tolerance: 90.0%
+Normalization by median
+Protein quantification method: mean
+Number of peptides per protein (N) for quantification: 5
+
+Files loaded in this script (excluding mzML):
+-- Predictions file: Datafiles/GluC/gluc_labelled_kpreds.csv
+---- Line count: 113374
+-- Proteome file: Datafiles/GluC/HumanProteome.fasta
+---- Line count: 221512
+
+mzML files loaded in running of this script:
+ID: Ctrl1, filename: 20230802_EV_KK_Evo_Whisper100_20SPD_FAIMS_2CV_1475_Ctrl1
+ID: Ctrl2, filename: 20230802_EV_KK_Evo_Whisper100_20SPD_FAIMS_2CV_1475_Ctrl2
+ID: Ctrl3, filename: 20230802_EV_KK_Evo_Whisper100_20SPD_FAIMS_2CV_1475_Ctrl3
+ID: GluC1, filename: 20230802_EV_KK_Evo_Whisper100_20SPD_FAIMS_2CV_1475_GluC1
+ID: GluC2, filename: 20230802_EV_KK_Evo_Whisper100_20SPD_FAIMS_2CV_1475_GluC2
+ID: GluC3, filename: 20230802_EV_KK_Evo_Whisper100_20SPD_FAIMS_2CV_1475_GluC3
+
+Noise calculations in this script based on MS2 lowest 5.0% intensities:
+ID: Ctrl1, noise: 1420.6990966796875
+ID: Ctrl2, noise: 1450.3958740234375
+ID: Ctrl3, noise: 1451.250244140625
+ID: GluC1, noise: 1425.1676025390625
+ID: GluC2, noise: 1412.8248291015625
+ID: GluC3, noise: 1408.802734375
+
+In this script, the following data files were created:
+-- Protein table: Results/GluC/GluC_MBR_unfiltered_protein_table.csv
+---- Line count: 3984
+-- Peptide table: Results/GluC/GluC_MBR_unfiltered_peptide_table.csv
+---- Line count: 60254
+-- PSM table: Results/GluC/GluC_MBR_unfiltered_psm_table.csv
+---- Line count: 164167

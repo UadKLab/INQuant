@@ -1,0 +1,63 @@
+Status for script run for experiment: mixed_proteome_normal_unfiltered
+
+Script purpose:
+Mixed proteome quantification without MBR
+
+Script started at: 2025-05-04 13:52:50
+
+Time spent on entire script: 33.4 minutes
+- Time elapsed for time-flags called underway in the script:
+-- Finished running mzml file no. A1: 5.013 second(s)
+-- Finished running mzml file no. A2: 10.83 second(s)
+-- Finished running mzml file no. A3: 16.57 second(s)
+-- Finished running mzml file no. B1: 22.37 second(s)
+-- Finished running mzml file no. B2: 28.07 second(s)
+-- Finished running mzml file no. B3: 33.81 second(s)
+-- Normalization by median: 66.54 second(s)
+-- Loading proteome file: 66.67 second(s)
+-- Running protein alignment: 66.78 second(s)
+-- Finished protein alignment: 33.2 minute(s)
+-- Creating protein table: 33.2 minute(s)
+-- Processed proteins, starting grouping: 33.2 minute(s)
+-- Found principal proteins: 33.2 minute(s)
+-- Grouped proteins: 33.2 minute(s)
+
+Mass charge tolerance: 97.63457296020923 ppm
+Confidence filter: None
+Intensity tolerance: 20.0%
+Retention time window tolerance: 1.0%
+Empty values in output files: 
+Ran MBR: False
+Normalization by median
+Protein quantification method: mean
+Number of peptides per protein (N) for quantification: 5
+
+Files loaded in this script (excluding mzML):
+-- Predictions file: Datafiles/mixed_proteome/mixed.csv
+---- Line count: 108288
+-- Proteome file: Datafiles/mixed_proteome/mixed_human_yeast_ecoli.fasta
+---- Line count: 307168
+
+mzML files loaded in running of this script:
+ID: A1, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_A1
+ID: A2, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_A2
+ID: A3, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_A3
+ID: B1, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_B1
+ID: B2, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_B2
+ID: B3, filename: 20240221_MK_MEKONG_KK_FAIMS_1CV_Evo_40SPD_Whisper_1475_mixed_proteome_B3
+
+Noise calculations in this script based on MS2 lowest 5.0% intensities:
+ID: A1, noise: 1068.5257568359375
+ID: A2, noise: 1294.930908203125
+ID: A3, noise: 1316.214111328125
+ID: B1, noise: 1295.723876953125
+ID: B2, noise: 1286.448974609375
+ID: B3, noise: 1266.2564697265625
+
+In this script, the following data files were created:
+-- Protein table: Results/mixed_proteome/mixed_proteome_normal_unfiltered_protein_table.csv
+---- Line count: 4006
+-- Peptide table: Results/mixed_proteome/mixed_proteome_normal_unfiltered_peptide_table.csv
+---- Line count: 80369
+-- PSM table: Results/mixed_proteome/mixed_proteome_normal_unfiltered_psm_table.csv
+---- Line count: 105523

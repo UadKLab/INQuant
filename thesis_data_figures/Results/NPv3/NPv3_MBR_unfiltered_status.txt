@@ -1,0 +1,70 @@
+Status for script run for experiment: NPv3_MBR_unfiltered
+
+Script purpose:
+NPv3 quantification with MBR
+
+Script started at: 2025-05-09 11:38:37
+
+Time spent on entire script: 17.1 minutes
+- Time elapsed for time-flags called underway in the script:
+-- Finished running MBR: 3.16 minute(s)
+-- Finished running mzml file no. 0: 3.62 minute(s)
+-- Finished running mzml file no. 5: 4.01 minute(s)
+-- Finished running mzml file no. 10: 4.44 minute(s)
+-- Finished running mzml file no. 20: 4.84 minute(s)
+-- Finished running mzml file no. 40: 5.23 minute(s)
+-- Finished running mzml file no. 40_rep2: 5.61 minute(s)
+-- Finished running mzml file no. 40_rep3: 6.0 minute(s)
+-- Normalization by median: 7.96 minute(s)
+-- Loading proteome file: 7.98 minute(s)
+-- Running protein alignment: 7.99 minute(s)
+-- Finished protein alignment: 16.6 minute(s)
+-- Creating protein table: 16.6 minute(s)
+-- Processed proteins, starting grouping: 16.6 minute(s)
+-- Found principal proteins: 16.6 minute(s)
+-- Grouped proteins: 16.6 minute(s)
+
+Mass charge tolerance: 98.85741421781134 ppm
+Confidence filter: None
+Intensity tolerance: 20.0%
+Retention time window tolerance: 1.0%
+Empty values in output files: 
+Ran MBR: True
+MBR tolerance: 90.0%
+Normalization by median
+Protein quantification method: mean
+Number of peptides per protein (N) for quantification: 5
+
+Files loaded in this script (excluding mzML):
+-- Predictions file: Datafiles/NPv3/NPv3_instanovo.csv
+---- Line count: 190330
+-- Proteome file: Datafiles/NPv3/B5.fasta
+---- Line count: 41665
+
+mzML files loaded in running of this script:
+ID: 0, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_0
+ID: 5, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_5
+ID: 10, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_10
+ID: 20, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_20
+ID: 40, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_40
+ID: 40_rep2, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_40_rep2
+ID: 40_rep3, filename: 20250217_HB_MEKONG_KK_FAIMS_1CV_Endurance15_44min_P1475_DDA_RS_40_rep3
+
+Noise calculations in this script based on MS2 lowest 5.0% intensities:
+ID: 0, noise: 1870.4462890625
+ID: 5, noise: 1892.5087890625
+ID: 10, noise: 1864.9600830078125
+ID: 20, noise: 1728.695068359375
+ID: 40, noise: 1794.584716796875
+ID: 40_rep2, noise: 1752.2401123046875
+ID: 40_rep3, noise: 1773.012939453125
+
+In this script, the following data files were created:
+-- Protein table: Results/NPv3/NPv3_MBR_unfiltered_protein_table.csv
+---- Line count: 1806
+-- Peptide table: Results/NPv3/NPv3_MBR_unfiltered_peptide_table.csv
+---- Line count: 101715
+-- PSM table: Results/NPv3/NPv3_MBR_unfiltered_psm_table.csv
+---- Line count: 186859
+-- Protein table ungrouped: Results/NPv3/NPv3_MBR_unfiltered_protein_table_ungrouped.csv
+---- Line count: 1962
