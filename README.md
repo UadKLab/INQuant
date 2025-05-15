@@ -1,6 +1,6 @@
 # INQuant Quantification algorithm
 
-`INQuant` is a Python module designed for quantification for InstaNovo predictions. 
+`inquant_tools` is a Python module designed for quantification for InstaNovo predictions. 
 Developed by Annekatrine Kirketerp-Møller and Ida Sofie Goldschmidt as part of a 5 ECTS special course and 20 ECTS Bachelors thesis at DTU.
 
 ## Documentation
